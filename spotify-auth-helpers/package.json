@@ -1,0 +1,10 @@
+{
+  "name": "spotify-oauth-callback-vercel",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Spotify OAuth callback handler for Vercel",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  }
+}
