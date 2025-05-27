@@ -1,26 +1,47 @@
-# DESK_STATS [ESP8266 Spotify OLED Display (Version 1.0)]
+# spoti-stats: ESP8266 Spotify OLED Display & Controller
 
-This project uses a NodeMCU ESP8266 and an I2C OLED display (128x64) to show the currently playing song on Spotify. It also features three buttons for basic playback control (Previous, Play/Pause, Next). Data is fetched from the Spotify Web API, and this setup includes a method for obtaining the necessary Spotify Refresh Token using a Vercel serverless function as a callback.
+![Project Demo GIF](demo/demo.gif)
 
-## Features (Version 1.0)
+Display your currently playing Spotify track, artist, and playback progress on an SSD1306 OLED display using an ESP8266. Control playback with physical buttons for previous, play/pause, and next track.
 
-*   Displays the current track name and artist.
-*   Shows current playback status (Playing/Paused).
-*   Playback control:
+This project features a custom boot animation with status updates, scrolling text for long track/artist names, a "wavy" animated progress bar, and uses the "Pixelify Sans" custom font for a distinct look.
+
+## Features
+
+*   **Now Playing Info:** Displays current track name and artist.
+*   **Playback Status:** Shows if music is playing or paused.
+*   **Playback Control:**
     *   Previous Track
     *   Play/Pause
     *   Next Track
-*   Fetches data from the Spotify Web API.
-*   Handles Spotify API authentication (OAuth 2.0 Refresh Token flow).
-*   Displays the last octet of the ESP8266's IP address.
+*   **Animated Progress Bar:** Visual representation of track progress with a unique wavy animation.
+*   **Scrolling Text:** Long track and artist names scroll horizontally for better readability.
+*   **WiFi Connectivity:** Connects to your local WiFi network.
+*   **Spotify API Integration:** Uses Spotify Web API for track info and control.
+*   **OLED Display:** Utilizes a 128x64 SSD1306 I2C OLED display.
+*   **Custom Font:** Uses "Pixelify Sans" for the boot screen logo.
+*   **Boot Animation:** Displays logo and real-time status for WiFi connection and Spotify authentication.
+*   **IP Address Display:** Shows the last octet of the ESP8266's IP address on the main screen.
+*   **Automatic Token Refresh:** Handles Spotify access token expiration and renewal using a refresh token.
 
 ## Hardware Required
 
-*   NodeMCU ESP8266 (Amica, LoLin, or similar ESP-12E/F based board)
-*   128x64 SSD1306 OLED Display (I2C interface)
-*   3x Tactile Push Buttons
-*   Breadboard
-*   Jumper Wires
+*   **ESP8266 Development Board:** (e.g., NodeMCU Amica/LoLin, Wemos D1 Mini, or similar ESP-12E/F based board)
+*   **SSD1306 OLED Display:** 128x64 pixels, I2C interface (ensure it's address `0x3C` or change in code).
+*   **Tactile Push Buttons (3)**
+*   **Breadboard and Jumper Wires**
+*   **Micro USB Cable:** For power and programming.
+
+## Software & Libraries
+
+*   **Arduino IDE:** [Download here](https://www.arduino.cc/en/software)
+*   **ESP8266 Core for Arduino:** Follow installation instructions [here](https://github.com/esp8266/Arduino)
+*   **Libraries (Install via Arduino Library Manager):**
+    *   `Adafruit GFX Library` (by Adafruit)
+    *   `Adafruit SSD1306` (by Adafruit)
+    *   `ArduinoJson` (by Benoit Blanchon, Version 6.x.x recommended)
+*   **Custom Font File:**
+    *   `PixelifySans_10pt.h`: This file (containing the font data for "Pixelify Sans 10pt") must be present in the same directory as your main `.ino` sketch file.
 
 ## Wiring
 
@@ -29,152 +50,205 @@ This project uses a NodeMCU ESP8266 and an I2C OLED display (128x64) to show the
 *   **VCC** (OLED) -> **3.3V** (NodeMCU)
 *   **SCL** (OLED) -> **D1** (NodeMCU - GPIO5)
 *   **SDA** (OLED) -> **D2** (NodeMCU - GPIO4)
-    *Note: Default I2C address used is `0x3C`. Adjust in `deskstats_spotify_v.1.ino` if yours is different.*
+    *Note: The code defines `SCREEN_ADDRESS 0x3C`. Adjust this in your sketch if your display's I2C address is different.*
 
 ### Buttons (Using `INPUT_PULLUP`)
 *   **Previous Button:**
-    *   One leg -> **D5** (NodeMCU - GPIO14)
+    *   One leg -> **D5** (NodeMCU - GPIO14) - Corresponds to `PREV_BUTTON_PIN`
     *   Other leg -> **GND** (NodeMCU)
 *   **Play/Pause Button:**
-    *   One leg -> **D6** (NodeMCU - GPIO12)
+    *   One leg -> **D6** (NodeMCU - GPIO12) - Corresponds to `PLAYPAUSE_BUTTON_PIN`
     *   Other leg -> **GND** (NodeMCU)
 *   **Next Button:**
-    *   One leg -> **D7** (NodeMCU - GPIO13)
+    *   One leg -> **D7** (NodeMCU - GPIO13) - Corresponds to `NEXT_BUTTON_PIN`
     *   Other leg -> **GND** (NodeMCU)
 
-## Software & Setup Workflow
+## Configuration Workflow
 
 The setup involves three main parts:
 1.  Setting up a Spotify Developer App.
-2.  Deploying a Vercel callback function to help with Spotify authentication.
+2.  Generating necessary Spotify credentials.
 3.  Configuring and uploading the Arduino sketch to the NodeMCU.
 
 ### Part 1: Spotify Developer App Setup
 
-1.  **Create a Spotify Developer Account:** Go to [https://developer.spotify.com/dashboard/](https://developer.spotify.com/dashboard/)
-2.  **Create an App:**
-    *   Give it a name (e.g., "ESP8266 Spotify Display") and a description.
-    *   Once created, you will get a **Client ID** and you can view the **Client Secret**. Copy these down.
-3.  **Redirect URIs:** You will configure the Redirect URI in Part 2, Step 4 after deploying your Vercel function.
+1.  **Go to Spotify Developer Dashboard:** [https://developer.spotify.com/dashboard/](https://developer.spotify.com/dashboard/)
+2.  **Log in** with your Spotify account.
+3.  Click **"Create an App"** (or "Create App").
+    *   Give it a name (e.g., "spoti-stats ESP8266 Display").
+    *   Give it a description.
+    *   Agree to the terms.
+4.  Once created, you'll see your **Client ID**. Click **"Show client secret"** to see your **Client Secret**.
+    *   **Copy your `Client ID`**.
+    *   **Copy your `Client Secret`**.
+5.  Click **"Edit Settings"**.
+6.  Under **"Redirect URIs"**, add `http://localhost/callback` (or any valid URI, e.g., `https://example.com/callback`). This URI is primarily used during the manual refresh token generation process but not directly by the ESP8266 in runtime. Click **"Add"** then **"Save"**.
 
-### Part 2: Vercel Callback & Refresh Token Generation
+### Part 2: Generate Spotify Credentials
 
-This project uses a Vercel serverless function to securely handle the Spotify OAuth callback and help you obtain the Refresh Token.
+#### A. `spotifyClientCredsB64`
+This is a Base64 encoded string of your `Client ID` and `Client Secret` combined with a colon.
+Format: `Base64Encode(YOUR_CLIENT_ID:YOUR_CLIENT_SECRET)`
 
-1.  **Prerequisites for Vercel & Python Script:**
-    *   **Node.js and npm:** For Vercel CLI. ([Install Node.js](https://nodejs.org/))
-    *   **Vercel Account:** Sign up at [https://vercel.com/](https://vercel.com/)
-    *   **Vercel CLI:** Install globally: `npm install -g vercel`
-    *   **Python 3:** For running the `get_spotify_refresh_token.py` script. ([Install Python](https://www.python.org/))
-    *   **Python `requests` library:** Install: `pip install requests`
+You can use an online Base64 encoder or a command line tool:
+*   **Linux/macOS Terminal:**
+    ```bash
+    echo -n "YOUR_CLIENT_ID:YOUR_CLIENT_SECRET" | base64
+    ```
+    (Replace `YOUR_CLIENT_ID` and `YOUR_CLIENT_SECRET` with your actual values. The `-n` is important to prevent a trailing newline.)
+*   **Online Tool:** Search for "base64 encode online".
+*   **Python:**
+    ```python
+    import base64
+    client_id = "YOUR_CLIENT_ID"
+    client_secret = "YOUR_CLIENT_SECRET"
+    message = f"{client_id}:{client_secret}"
+    message_bytes = message.encode('ascii')
+    base64_bytes = base64.b64encode(message_bytes)
+    base64_message = base64_bytes.decode('ascii')
+    print(f"Base64 Encoded Client Credentials: {base64_message}")
+    ```
 
-2.  **Project Files for Vercel Callback:**
-    Ensure you have the following files in a directory (e.g., `spotify-auth-helpers`):
-    *   `api/callback.js` (Provided in this repository)
-    *   `vercel.json` (Provided in this repository)
-    *   `package.json` (Provided in this repository, primarily for Vercel to recognize the project type)
+#### B. `spotifyRefreshToken`
+A refresh token allows your ESP8266 to get new access tokens without requiring user login each time. It's typically a one-time generation process.
 
-3.  **Deploy to Vercel:**
-    *   Open your terminal, navigate to the directory containing these Vercel files.
-    *   Log in to Vercel: `vercel login`
-    *   Deploy: `vercel` (or `vercel --prod` for a production deployment)
-    *   Vercel will provide a URL for your deployment (e.g., `https://your-project-name-xxxx.vercel.app`). Your callback endpoint will be this URL plus `/api/callback`. Example: `https://my-spotify-callback.vercel.app/api/callback`. **Note this full callback URL.**
+**Manual Method (Conceptual - using Authorization Code Flow):**
+1.  **Construct Authorization URL:**
+    Replace `YOUR_CLIENT_ID` and `YOUR_REDIRECT_URI` (from Part 1, Step 6) in the URL below.
+    The `scope` parameter defines the permissions your application needs. The one in your code implies: `user-read-currently-playing user-read-playback-state user-modify-playback-state`.
+    ```
+    https://accounts.spotify.com/authorize?client_id=YOUR_CLIENT_ID&response_type=code&redirect_uri=YOUR_REDIRECT_URI&scope=user-read-currently-playing%20user-read-playback-state%20user-modify-playback-state
+    ```
+2.  **Authorize:** Open this URL in your browser. Log in to Spotify if prompted and grant permissions. You'll be redirected to your `redirect_uri` with a `code` parameter in the URL (e.g., `http://localhost/callback?code=AQB...`). **Copy this `code` value.** This code is short-lived.
+3.  **Exchange Code for Tokens:** Make a POST request to `https://accounts.spotify.com/api/token`. You can use tools like `curl` or Postman.
+    *   **URL:** `https://accounts.spotify.com/api/token`
+    *   **Method:** `POST`
+    *   **Headers:**
+        *   `Authorization: Basic YOUR_CLIENT_CREDS_B64` (the Base64 string from Part 2A)
+        *   `Content-Type: application/x-www-form-urlencoded`
+    *   **Body (form-urlencoded):**
+        *   `grant_type=authorization_code`
+        *   `code=THE_AUTHORIZATION_CODE_YOU_JUST_GOT`
+        *   `redirect_uri=YOUR_REDIRECT_URI`
 
-4.  **Update Spotify Developer Dashboard Redirect URI:**
-    *   Go back to your Spotify App settings on the Developer Dashboard.
-    *   Under "Edit Settings", add the **full Vercel callback URL** (e.g., `https://my-spotify-callback.vercel.app/api/callback`) to the "Redirect URIs" list.
-    *   Save the settings.
+    Example using `curl`:
+    ```bash
+    curl -X POST "https://accounts.spotify.com/api/token" \
+         -H "Authorization: Basic YOUR_CLIENT_CREDS_B64" \
+         -H "Content-Type: application/x-www-form-urlencoded" \
+         -d "grant_type=authorization_code&code=THE_AUTHORIZATION_CODE_YOU_JUST_GOT&redirect_uri=YOUR_REDIRECT_URI"
+    ```
+    The JSON response will contain `access_token`, `expires_in`, and importantly, `refresh_token`. **Securely copy the `refresh_token` value.**
 
-5.  **Get Refresh Token using Python Script:**
-    *   Use the `get_spotify_refresh_token.py` script (provided in this repository).
-    *   **Important:** Before running, open the script and ensure the `CLIENT_ID`, `CLIENT_SECRET`, and `VERCEL_CALLBACK_URI` variables at the top are correctly set to your values (or be prepared to enter them when prompted).
-    *   Run the script: `python get_spotify_refresh_token.py`
-    *   It will guide you:
-        1.  A browser window will open for Spotify authorization.
-        2.  Log in and grant permissions.
-        3.  Spotify will redirect to your Vercel callback page.
-        4.  Your Vercel page will display an **authorization code**. Copy this code.
-        5.  Paste the authorization code back into the Python script in your terminal.
-    *   The script will then output your **Access Token** and **Refresh Token**. **Securely copy the Refresh Token.**
+**Note:** There are also helper scripts and online tools available that can simplify obtaining a refresh token by automating parts of this flow. Search for "Spotify API get refresh token script".
 
-6.  **Base64 Encode `Client ID:Client Secret`:**
-    *   You'll need a Base64 encoded string of `your_client_id:your_client_secret`.
-    *   Concatenate them with a colon: `CLIENT_ID_VALUE:CLIENT_SECRET_VALUE`
-    *   Use an online tool like [Base64 Encode](https://www.base64encode.org/) or the following Python command:
-        ```python
-        import base64
-        client_id = "YOUR_CLIENT_ID"
-        client_secret = "YOUR_CLIENT_SECRET"
-        message = f"{client_id}:{client_secret}"
-        message_bytes = message.encode('ascii')
-        base64_bytes = base64.b64encode(message_bytes)
-        base64_message = base64_bytes.decode('ascii')
-        print(base64_message)
-        ```
-    *   Copy the resulting Base64 string.
+**Important:** Keep your `Client Secret` and `Refresh Token` secure!
 
 ### Part 3: Arduino Sketch Setup
 
-1.  **Arduino IDE:**
+1.  **Arduino IDE Setup:**
     *   Install the Arduino IDE.
     *   Install the ESP8266 board support package: Go to `File > Preferences` and add `http://arduino.esp8266.com/stable/package_esp8266com_index.json` to "Additional Boards Manager URLs". Then, go to `Tools > Board > Boards Manager`, search for `esp8266`, and install it.
-    *   Select your NodeMCU board from `Tools > Board` (e.g., "NodeMCU 1.0 (ESP-12E Module)").
+    *   Select your NodeMCU board from `Tools > Board` (e.g., "NodeMCU 1.0 (ESP-12E Module)" or "LOLIN(WEMOS) D1 R2 & mini").
 
-2.  **Libraries:**
-    Install the following libraries via the Arduino Library Manager (`Sketch > Include Library > Manage Libraries...`):
-    *   `Adafruit GFX Library` by Adafruit
-    *   `Adafruit SSD1306` by Adafruit
-    *   `ArduinoJson` by Benoit Blanchon (Version 6.x.x is recommended)
+2.  **Install Libraries:** (As listed in "Software & Libraries" section above).
 
-3.  **Configure the Sketch (`spotify_oled_display.ino`):**
-    Open the main `.ino` sketch file (e.g., `spotify_oled_display.ino` containing the ESP8266 code) and update the following placeholders:
+3.  **Add Custom Font:** Download/create `PixelifySans_10pt.h` and place it in the same folder as your main `.ino` sketch file.
+
+4.  **Configure the Sketch (`spoti-stats.ino` or your main sketch file):**
+    Open the `.ino` sketch file and update the following placeholders in the `// --- config ---` section:
+
     ```cpp
-    // --- Spotify API Configuration ---
-    const char* ssid = "YOUR_WIFI_SSID"; // Your WiFi network name
-    const char* password = "YOUR_WIFI_PASSWORD"; // Your WiFi password
+    // --- config ---
+    const char* ssid = "YOUR_WIFI_SSID";         // Your WiFi network Name
+    const char* password = "YOUR_WIFI_PASSWORD"; // Your WiFi network Password
 
-    String spotifyClientId = "YOUR_SPOTIFY_CLIENT_ID"; // From Spotify Dashboard
-    String spotifyClientCredsB64 = "YOUR_BASE64_ENCODED_CLIENTID_COLON_CLIENTSECRET"; // From Part 2, Step 6
-    String spotifyRefreshToken = "YOUR_SPOTIFY_REFRESH_TOKEN"; // From Part 2, Step 5
+    // Get these from Spotify Developer Dashboard
+    String spotifyClientId = "YOUR_SPOTIFY_CLIENT_ID"; // From Part 1
+
+    // Base64 encoded string of "YOUR_CLIENT_ID:YOUR_CLIENT_SECRET"
+    String spotifyClientCredsB64 = "YOUR_GENERATED_BASE64_STRING"; // From Part 2A
+
+    // Get this using an external tool/script (see prerequisites)
+    String spotifyRefreshToken = "YOUR_GENERATED_REFRESH_TOKEN"; // From Part 2B
+
+    // --- OLED Display Configuration ---
+    // ... (Usually 0x3C for 128x64 SSD1306, change if yours is different)
+    #define SCREEN_ADDRESS 0x3C
+
+    // --- Button Configuration ---
+    // (Default pins, change if your wiring is different)
+    const int PREV_BUTTON_PIN = D5;
+    const int PLAYPAUSE_BUTTON_PIN = D6;
+    const int NEXT_BUTTON_PIN = D7;
     ```
 
-## Uploading and Running the ESP8266 Code
+## Installation & Flashing
 
 1.  Connect your NodeMCU to your computer via USB.
-2.  Select the correct Board and Port in the Arduino IDE.
-3.  Click the "Upload" button.
-4.  Once uploaded, open the Serial Monitor (`Tools > Serial Monitor`) at `115200` baud to see debug messages and status.
-5.  The OLED display should initialize, connect to WiFi, fetch the token, and then display Spotify information.
+2.  In the Arduino IDE, select the correct Board (`Tools > Board`) and Port (`Tools > Port`).
+3.  Click the "Upload" button (right arrow icon).
+4.  Once uploaded, open the Serial Monitor (`Tools > Serial Monitor`) at `115200` baud to see debug messages, connection status, and API responses.
+5.  The OLED display should initialize, show the boot animation, connect to WiFi, authenticate with Spotify, and then start displaying "Now Playing" information.
+
+## How It Works
+
+1.  **Boot Sequence:**
+    ![Boot](demo/boot.jpg)
+    *   Initializes the OLED display.
+    *   Displays a boot logo ("Spotify Stats" with Pixelify Sans font) and status messages for WiFi connection and Spotify authentication, with a simple animation.
+    *   Connects to the specified WiFi network.
+    *   Fetches an initial Spotify Access Token using the provided Refresh Token.
+    *   If WiFi or authentication fails, it displays an error and halts (or retries WiFi).
+2.  **Main Loop:**
+    *   **Button Handling:** Continuously checks for button presses (with debouncing). If a button is pressed, it sends the corresponding command (previous, play/pause, next) to the Spotify API.
+    *   **API Calls:**
+        *   Periodically (every `API_CALL_INTERVAL`), it fetches the "currently playing" track information from Spotify.
+        *   Before making API calls, it checks if the Access Token is nearing expiry (`TOKEN_REFRESH_LEAD_TIME`). If so, it uses the Refresh Token to get a new Access Token.
+        *   If WiFi is disconnected, it attempts to reconnect.
+    *   **Display Update:**
+        *   Regularly (every `DISPLAY_ANIMATION_INTERVAL`), it updates the OLED display with the latest track, artist, playback status, IP address suffix, and the wavy progress bar.
+        *   Handles text scrolling for long track and artist names.
+        *   Animates the wavy progress bar based on song progress.
 
 ## Troubleshooting
 
-*   **Vercel 404:** Ensure you're accessing the Vercel function at the correct path (e.g., `https://your-deployment.vercel.app/api/callback`). Check Vercel deployment logs.
-*   **Python Script Errors:**
-    *   `INVALID_CLIENT: Invalid redirect URI`: The `VERCEL_CALLBACK_URI` in your Python script or Spotify App settings is incorrect or doesn't match.
-    *   `Error getting tokens`: The authorization code might have been incorrect/expired, or `redirect_uri` mismatch in the token request.
-*   **ESP8266 `ESP8266WiFi.h: No such file or directory`**: ESP8266 board support not installed/selected in Arduino IDE.
-*   **ESP8266 OLED Not Working:** Check wiring, I2C address, correct Adafruit display library.
-*   **ESP8266 Token Failed / API Errors:** Double-check all Spotify credentials in the sketch. Ensure Refresh Token is valid. Check Serial Monitor.
-*   **ESP8266 `JSON Parse Err`**: This version uses JSON filtering. If this error persists, check the raw JSON response printed to the Serial Monitor.
+*   **No Display / OLED Not Working:**
+    *   Check all wiring carefully (SDA, SCL, VCC, GND).
+    *   Ensure the I2C address (`SCREEN_ADDRESS`) in the code matches your OLED module (common addresses are `0x3C` or `0x3D`). You can use an I2C scanner sketch to find the address.
+*   **WiFi Connection Issues:**
+    *   Double-check SSID and password in the sketch. Case-sensitive!
+    *   Ensure your WiFi network is 2.4GHz (ESP8266 does not support 5GHz).
+    *   Check router signal strength and proximity.
+    *   Look at Serial Monitor output for error messages like "WiFi connection FAILED."
+*   **Spotify Authentication Errors (Check Serial Monitor):**
+    *   `Token host connection failed!`: ESP8266 cannot reach `accounts.spotify.com`. Check internet connection.
+    *   `Token client timeout!`: Slow internet connection or Spotify server issue.
+    *   `deserializeJson() for token failed`: The response from Spotify was not valid JSON or an error occurred. Often due to incorrect `spotifyClientCredsB64` or an invalid `spotifyRefreshToken`.
+    *   `Could not get access token from response`: The `spotifyRefreshToken` might be invalid/expired, or `spotifyClientCredsB64` is wrong. You might need to generate a new refresh token.
+*   **Spotify API Errors (e.g., 401, 403, "API Error" on display):**
+    *   `HTTP/1.1 401 Unauthorized`: Access Token is invalid or expired. The code should attempt to refresh it. If this persists, the Refresh Token might be bad.
+    *   `HTTP/1.1 403 Forbidden`: You might not have the correct scopes authorized for your refresh token, or your Spotify app might be restricted.
+    *   Check Serial Monitor for detailed HTTP status codes and error messages from the API.
+*   **"deserializeJson() failed" for `getCurrentlyPlaying`:**
+    *   Spotify API might have changed its response structure.
+    *   Could be an ESP8266 memory issue if the JSON response is very large, though the code uses filtering and a reasonably sized `DynamicJsonDocument`.
+*   **Text Not Scrolling / Progress Bar Issues:**
+    *   Check timing constants in the code related to scrolling and animation intervals.
+*   **Buttons Not Working:**
+    *   Verify wiring. Ensure buttons are connected to the correct ESP8266 pins and to GND.
+    *   The Serial Monitor should show "Button X pressed." messages if debouncing and detection are working.
+*   **Font Not Displaying (`PixelifySans_10pt.h`):**
+    *   Ensure the `PixelifySans_10pt.h` file is in the same directory as your `.ino` sketch file.
+    *   Check that the `#include "PixelifySans_10pt.h"` line is present in your sketch.
 
 ## Files in this Repository
 
-*   `spotify_oled_display.ino`: Main Arduino sketch for the ESP8266.
-*   `get_spotify_refresh_token.py`: Python script to obtain the Spotify Refresh Token using the Vercel callback.
-*   `api/callback.js`: Serverless function for Vercel to handle Spotify OAuth callback.
-*   `vercel.json`: Configuration file for Vercel deployment.
-*   `package.json`: Node.js package file for the Vercel project.
+*   `spoti-stats.ino`: The main sketch for the ESP8266.
+*   `PixelifySans_10pt.h`: Custom GFX font file for "Pixelify Sans".
 *   `README.md`: This file.
 
-## Future Ideas (Version 2+)
+## Credits
 
-*   Scrolling text for long track/artist names.
-*   Playback progress bar.
-*   Album art display.
-
-## License
-
-
-This project is open-source. Please provide attribution if you find it useful.
-
----
+*   This project utilizes the [Spotify Web API](https://developer.spotify.com/documentation/web-api/).
+*   Font: "Pixelify Sans" (ensure you have the rights to use any custom font or replace it with a freely available GFX font).
